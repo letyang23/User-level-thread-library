@@ -4,17 +4,27 @@
 
 #include "queue.h"
 
+/**
+ * Node structure for queue, including pointer to the data and pointer to the next node in queue 
+ * Singly linked list implementation
+ */
 typedef struct node {
     void *data;
     struct node *next;
 } node_t;
 
+/**
+ * Queue structure with pointer to the head and tail of queue, and the number of items in queue
+ */
 struct queue {
     int size;
     node_t *head;
     node_t *tail;
 };
 
+/**
+ * Create a new empty queue and return its address
+ */
 queue_t queue_create(void) {
     queue_t new_queue = (queue_t) malloc(sizeof(struct queue));
 
@@ -28,6 +38,9 @@ queue_t queue_create(void) {
     return new_queue;
 }
 
+/**
+ * Create a new empty queue and return its address
+ */
 int queue_destroy(queue_t queue) {
     if (queue == NULL || queue->size != 0) {
         return -1;
@@ -37,6 +50,9 @@ int queue_destroy(queue_t queue) {
     }
 }
 
+/**
+ * Enqueue a new data item into the queue
+ */
 int queue_enqueue(queue_t queue, void *data) {
     if (queue == NULL || data == NULL) {
         return -1;
@@ -60,6 +76,9 @@ int queue_enqueue(queue_t queue, void *data) {
     return 0;
 }
 
+/**
+ * Dequeue the oldest data item from the queue
+ */
 int queue_dequeue(queue_t queue, void **data) {
     if (queue == NULL || data == NULL || queue->size == 0) {
         return -1;
@@ -76,6 +95,9 @@ int queue_dequeue(queue_t queue, void **data) {
     return 0;
 }
 
+/**
+ * Delete a specific data item that first appeared(oldest) in the queue
+ */
 int queue_delete(queue_t queue, void *data) {
     if (queue == NULL || data == NULL) {
         return -1;
@@ -113,6 +135,11 @@ int queue_delete(queue_t queue, void *data) {
     return -1;
 }
 
+/**
+ * Iterate through each item in the queue, from the oldest
+ * item to the newest item, and calls the given callback function on each
+ * item.
+ */
 int queue_iterate(queue_t queue, queue_func_t func) {
     if (queue == NULL || func == NULL) {
         return -1;
@@ -140,10 +167,12 @@ int queue_iterate(queue_t queue, queue_func_t func) {
     return 0;
 }
 
+/**
+ * Return the length of queue
+ */
 int queue_length(queue_t queue) {
     if (queue == NULL) {
         return -1;
     }
     return queue->size;
 }
-
