@@ -10,227 +10,224 @@
 #include "uthread.h"
 #include "queue.h"
 
-//define enum type for the thread state
-enum{
+enum {
     STATE_READY, //0
     STATE_RUNNING, // 1
-    STATE_EXIT, //2
-    STATE_BLOCKED //3
+    STATE_ZOMBIE, //2
+    STATE_BLOCK//3
 };
 
 
 struct uthread_tcb {
-    int tid; //thread id
-    uthread_ctx_t context;
-    int threadState; //0 is ready to run, 1 is running, 2 is exit 3 is blocked
-    void* stack;
+    /* TODO Phase 2 */
+    int tid;
+    uthread_ctx_t ctx;
+    void *stack;
+    int state; // 0: ready, 1: running, 2: zombie, 3: blocked
 };
 
-typedef struct uthread_tcb  uthread_tcb;
+typedef struct {
+    int count;
+    struct uthread_tcb *main_thread;
+    struct uthread_tcb *running_thread;
+    queue_t ready_queue;
+    queue_t block_queue;
+} Controllor;
 
-//storing all the queue in the struct
-typedef struct{
-    //count all the thread has been add
-    int threadIdCount;
-    //store current running thread
-    struct uthread_tcb *runningThread;
-    //store the main thread, if exit, put back into running thread
-    struct uthread_tcb *mainThread;
-    //queue for storing block zombie ready
-    queue_t queueOfBlocked;
-    queue_t queueOfZombie;
-    queue_t queueOfReady;
-}ScheduleController;
-
-ScheduleController *scheduleController;
-
-
+Controllor *controllor;
 
 struct uthread_tcb *uthread_current(void)
 {
-    //direct return the running thread
-    return scheduleController->runningThread;
+    /* TODO Phase 2/3 */
+    return controllor->running_thread;
 }
 
-//initialize the thread
-//argument:
-//func/arg: data will store into the thread
-//thread: use to return the thread which has been initialize
-//return type: return -1 if fail return 0 if success
-int ThreadInitialize(uthread_func_t func, void *arg, uthread_tcb* thread){
-    //initialize the stack
+int starter(struct uthread_tcb *thread, uthread_func_t func, void *arg) {
     thread->stack = uthread_ctx_alloc_stack();
-    //if stack is null function fail, return -1
-    if(thread->stack == NULL){
+    if (thread->stack == NULL) {
         return -1;
     }
 
-    //check whether the id count whether is zero
-    if(scheduleController->threadIdCount != 0){
-        //set state to ready
-        thread->threadState = STATE_READY;
-
-    }else{
-        //initialize main thread
-        thread->threadState = STATE_RUNNING;
-        arg = NULL;
+    if (controllor->count == 0) {
+        //Main thread
+        thread->state = STATE_RUNNING;
         func = NULL;
-
+        arg = NULL;
+    } else {
+        thread->state = STATE_READY;
     }
-    //thread->context = (uthread_ctx_t)malloc(sizeof(uthread_ctx_t));
-    if(uthread_ctx_init(&thread->context, thread->stack, func, arg) == -1){
+
+    if (uthread_ctx_init(&thread->ctx, thread->stack, func, arg) == -1) {
+        uthread_ctx_destroy_stack(thread->stack);
+        free(thread);
         return -1;
     }
-    //set tid from the storing threadIdCount
-    thread->tid = scheduleController->threadIdCount;
-    scheduleController->threadIdCount += 1;
+
+    thread->tid = controllor->count;
+    controllor->count++;
     return 0;
 }
 
-
-
-
 void uthread_yield(void)
 {
+    /* TODO Phase 2 */
     preempt_disable();
-    //temporary store the current running thread
-    uthread_tcb* savedThread = scheduleController->runningThread;
-    //if thread is not main thread, put it back to ready queue
-    if(savedThread->tid != 0){
-        //set state to ready
-        scheduleController->runningThread->threadState = STATE_READY;
-        //put it back to ready queue
-        if(queue_enqueue(scheduleController->queueOfReady,
-                         scheduleController->runningThread) == -1){
+
+    struct uthread_tcb *current = controllor->running_thread;
+    if (current->tid != 0) {
+        //Not the main thread
+        controllor->running_thread->state = STATE_READY;
+        if (queue_enqueue(controllor->ready_queue, current) == -1) {
+            //enqueue fail
             return;
         }
     }
 
-    //if queue is not empty, get thread from the ready else from mainthread
-    if(queue_length(scheduleController->queueOfReady) != 0){
-        //dequeue from the ready queue
-        queue_dequeue(scheduleController->queueOfReady,
-                      (void**)&scheduleController->runningThread);
-        scheduleController->runningThread->threadState = STATE_RUNNING;
-    }else{
-        //set main thread to running thread
-        scheduleController->runningThread = scheduleController->mainThread;
-        scheduleController->runningThread->threadState = STATE_RUNNING;
+    if (queue_length(controllor->ready_queue) == 0) {
+        //set main thread as running thread
+        controllor->running_thread = controllor->main_thread;
+        controllor->running_thread->state = STATE_RUNNING;
+    } else {
+        queue_dequeue(controllor->ready_queue, (void**)&controllor->running_thread);
     }
+
     preempt_enable();
-    //switch thread
-    uthread_ctx_switch(&savedThread->context,
-                       &scheduleController->runningThread->context);
-
-
+    uthread_ctx_switch(&current->ctx, &controllor->running_thread->ctx);
 }
 
 void uthread_exit(void)
 {
+    /* TODO Phase 2 */
     preempt_disable();
-    //temporary store the context for switch
-    uthread_ctx_t context = scheduleController->runningThread->context;
-    //set state to zombie and store in the zombie queue
-    scheduleController->runningThread->threadState = STATE_EXIT;
-    if(queue_enqueue(scheduleController->queueOfZombie,
-                     (void*)scheduleController->runningThread) == -1){
-        return;
+
+    uthread_ctx_t current_context = controllor->running_thread->ctx;
+    controllor->running_thread->state = STATE_ZOMBIE;
+
+    if (queue_length(controllor->ready_queue) == 0) {
+        //set main thread as running thread
+        controllor->running_thread = controllor->main_thread;
+        controllor->running_thread->state = STATE_RUNNING;
+    } else {
+        queue_dequeue(controllor->ready_queue, (void**)&controllor->running_thread);
     }
 
-    //if queue is not empty, get thread from the ready else from mainthread
-    if(queue_length(scheduleController->queueOfReady) != 0){
-        //dequeue from the ready queue
-        queue_dequeue(scheduleController->queueOfReady,
-                      (void**)&scheduleController->runningThread);
-        scheduleController->runningThread->threadState = STATE_RUNNING;
-    }else{
-        scheduleController->runningThread = scheduleController->mainThread;
-        scheduleController->runningThread->threadState = STATE_RUNNING;
-    }
     preempt_enable();
-    //switch thread
-    uthread_ctx_switch(&context, &scheduleController->runningThread->context);
+    uthread_ctx_switch(&current_context, &controllor->running_thread->ctx);
 }
 
 int uthread_create(uthread_func_t func, void *arg)
 {
-    //create space for thread
-    uthread_tcb* thread = (uthread_tcb*)malloc(sizeof(uthread_tcb));
-    //initialize thread
-    if(ThreadInitialize(func, arg, thread) == -1){
+    /* TODO Phase 2 */
+    struct uthread_tcb *thread = malloc(sizeof(struct uthread_tcb));
+    if (!thread) {
         return -1;
     }
-    //store it back to ready queue
-    if(queue_enqueue(scheduleController->queueOfReady, (void*)thread) == -1){
+
+    thread->stack = uthread_ctx_alloc_stack();
+    if (thread->stack == NULL) {
+        free(thread);
         return -1;
     }
+
+
+    if (controllor->count != 0) {
+        thread->state = STATE_READY;
+    }
+
+    if (uthread_ctx_init(&thread->ctx, thread->stack, func, arg) == -1) {
+        uthread_ctx_destroy_stack(thread->stack);
+        free(thread);
+        return -1;
+    }
+
+    thread->tid = controllor->count;
+    controllor->count++;
+
+    if (queue_enqueue(controllor->ready_queue, (void*)thread) == -1) {
+        return -1;
+    }
+
     return 0;
 }
 
-
 int uthread_run(bool preempt, uthread_func_t func, void *arg)
 {
-    if(preempt){
+    /* TODO Phase 2 */
+    if(preempt) {
         preempt_start(preempt);
     }
-    //create space for queue and main controller and set count to zero
-    scheduleController = (ScheduleController*)malloc(sizeof(ScheduleController));
-    scheduleController->queueOfBlocked = queue_create();
-    scheduleController->queueOfReady = queue_create();
-    scheduleController->queueOfZombie = queue_create();
-    scheduleController->threadIdCount = 0;
-    //if queue creating fail, return -1
-    if(scheduleController->queueOfBlocked == NULL ||
-       scheduleController->queueOfReady == NULL ||
-       scheduleController->queueOfZombie == NULL){
+
+    controllor = (Controllor*)malloc(sizeof(Controllor));
+    controllor->count = 0;
+    controllor->ready_queue = queue_create();
+    controllor->block_queue = queue_create();
+    if (controllor->ready_queue == NULL || controllor->block_queue == NULL) {
         return -1;
     }
 
-    //initialize the main thread
-    uthread_tcb* mainThread = (uthread_tcb*)malloc(sizeof(uthread_tcb));
-    if(ThreadInitialize(func, arg, mainThread) == -1){
+    struct uthread_tcb *main_thread = malloc(sizeof(struct uthread_tcb));
+    if (!main_thread) {
         return -1;
     }
-    //set main thread to main and running
-    scheduleController->mainThread = mainThread;
-    scheduleController->runningThread = mainThread;
-    //initialize the thread need to run and yield
+
+    main_thread->stack = uthread_ctx_alloc_stack();
+    if (main_thread->stack == NULL) {
+        return -1;
+    }
+
+    if (controllor->count == 0) {
+        //Main thread
+        main_thread->state = STATE_RUNNING;
+        func = NULL;
+        arg = NULL;
+    }
+
+    if (uthread_ctx_init(&main_thread->ctx, main_thread->stack, func, arg) == -1) {
+        uthread_ctx_destroy_stack(main_thread->stack);
+        free(main_thread);
+        return -1;
+    }
+
+    main_thread->tid = controllor->count;
+    controllor->count++;
+
+    controllor->main_thread = main_thread;
+    controllor->running_thread = main_thread;
     uthread_create(func, arg);
     uthread_yield();
 
     return 0;
-
 }
 
 void uthread_block(void)
 {
     preempt_disable();
     //temporary store the current running thread
-    uthread_tcb* savedThread = scheduleController->runningThread;
+    struct uthread_tcb* savedThread = controllor->running_thread;
     //if thread is not main thread, put it back to block queue
     if(savedThread->tid != 0){
-        scheduleController->runningThread->threadState = STATE_BLOCKED;
-        if(queue_enqueue(scheduleController->queueOfBlocked,
-                         scheduleController->runningThread) == -1){
+        controllor->running_thread->state = STATE_BLOCK;
+        if(queue_enqueue(controllor->block_queue,
+                         controllor->running_thread) == -1){
             return;
         }
     }
 
     //if queue is not empty, get thread from the ready else from mainthread
-    if(queue_length(scheduleController->queueOfReady) != 0){
+    if(queue_length(controllor->ready_queue) != 0){
         //dequeue from the ready queue
-        queue_dequeue(scheduleController->queueOfReady,
-                      (void**)&scheduleController->runningThread);
-        scheduleController->runningThread->threadState = STATE_RUNNING;
+        queue_dequeue(controllor->ready_queue,
+                      (void**)&controllor->running_thread);
+        controllor->running_thread->state = STATE_RUNNING;
     }else{
         //set main thread to running thread
-        scheduleController->runningThread = scheduleController->mainThread;
-        scheduleController->runningThread->threadState = STATE_RUNNING;
+        controllor->running_thread = controllor->main_thread;
+        controllor->running_thread->state = STATE_RUNNING;
     }
     preempt_enable();
     //switch thread
-    uthread_ctx_switch(&savedThread->context,
-                       &scheduleController->runningThread->context);
+    uthread_ctx_switch(&savedThread->ctx,
+                       &controllor->running_thread->ctx);
 
 }
 
@@ -238,8 +235,8 @@ void uthread_unblock(struct uthread_tcb *uthread)
 {
 
     //delete uthread from block queue
-    queue_delete(scheduleController->queueOfBlocked, uthread);
+    queue_delete(controllor->block_queue, uthread);
     //put thread back to the ready queue
-    queue_enqueue(scheduleController->queueOfReady, uthread);
+    queue_enqueue(controllor->ready_queue, uthread);
 
 }
