@@ -12,9 +12,10 @@
 
 /* Enum type for thread states */
 typedef enum {
-    THREAD_RUNNING, // Running State
-    THREAD_READY,   // Ready State
-    THREAD_EXITED   // Exited State
+    THREAD_RUNNING,     // Running State
+    THREAD_READY,       // Ready State
+    THREAD_EXITED,      // Exited State
+    THREAD_BLOCKED      // Blocked State
 } thread_state_t;
 
 /* Thread Control BLock (TCB) Data Structure */
@@ -32,6 +33,7 @@ struct uthread_tcb idle_thread;                     // Idle Thread
 
 struct uthread_tcb *uthread_current(void) {
     /* TODO Phase 2/3 */
+    return current_thread;
 }
 
 void uthread_yield(void) {
@@ -53,6 +55,15 @@ void uthread_yield(void) {
             return;
         }
         struct uthread_tcb *next_thread = (struct uthread_tcb *) next_thread_ptr;
+
+/**
+ * might not need this while loop?
+ */
+        while (next_thread->state == THREAD_BLOCKED) {
+            queue_enqueue(ready_queue, next_thread);
+            queue_dequeue(ready_queue, &next_thread_ptr);
+            next_thread = (struct uthread_tcb *)next_thread_ptr;
+        }
 
         // Set the state of the next thread to running state
         next_thread->state = THREAD_RUNNING;
@@ -145,8 +156,14 @@ int uthread_run(bool preempt, uthread_func_t func, void *arg) {
 
 void uthread_block(void) {
     /* TODO Phase 3 */
+    current_thread->state = THREAD_BLOCKED;
+    uthread_yield();
 }
 
 void uthread_unblock(struct uthread_tcb *uthread) {
     /* TODO Phase 3 */
+    if (uthread->state == THREAD_BLOCKED) {
+        uthread->state = THREAD_READY;
+        queue_enqueue(ready_queue, uthread);
+    }
 }
