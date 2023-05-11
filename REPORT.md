@@ -8,39 +8,31 @@ applications to create and run independent threads concurrently, and it contains
 the following functions:
 
 1. Create new thread.
-
 2. Schedule the threads execution in round-robin fashion.
-
 3. Provide an interrupt-based scheduler.
-
 4. Provide a thread synchronization API called semaphores.
 
 ## Implementation
 
 1. Implement a single FIFO queue.
-
 2. Implement the uthread API.
-
 3. Implement the semaphore API.
-
 4. Add preemption API to library.
 
 ## Phase 1: Running simple commands the hard way
 
 In this phase, we add code into libuthread/queue.c to implement a simple FIFO
 queue. Our implementation provides O(1) time complexity
-for `queue_create()`, `queue_destroy()`, `queue_enqueue()`, `queue_dequeue()`, `queue_length()`,
+for all the functions except `queue_delete()` and `queue_iterate()`,
 which satisfies the constraint of this exercise. And the time complexity
 for `queue_delete()` and `queue_iterate()` are O(n). Overall, the implementation
 is based on a singly linked list. We first create a struct called `node`, which
-represents a single element in the queue. The node contains a pointer to the
-data and a pointer to the next node in the queue. We also define a struct
-called `queue` that contains pointers to the head and tail nodes, as well as an
+represents a single element in the queue. We also define a struct
+called `queue` that contains pointers to the head and tail nodes, and an
 integer to track the size of the queue.
 
 We first implement the `queue_create()` function, which allocates an empty
-queue, create a new object of type 'struct queue' and return its address. The
-head and tail pointers are set to `NULL`, and the size is set to 0. For
+queue, create a new object of type 'struct queue' and return its address. For
 the `queue_destroy()` funciton, it mainly deallocates a queue and frees its
 memory. If the queue is null or the queue is not empty, it will return -1; else,
 it will frees the memory by using `free()` and then return 0. Then, we

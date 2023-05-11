@@ -39,6 +39,8 @@ struct uthread_tcb *uthread_current(void) {
 
 void uthread_yield(void) {
     /* TODO Phase 2 */
+	preempt_disable();
+	
     if (current_thread->state == THREAD_READY) {
         if (queue_enqueue(ready_queue, current_thread) == -1) {
             // Handle enqueue failure
@@ -58,16 +60,20 @@ void uthread_yield(void) {
         current_thread = next_thread;
         uthread_ctx_switch(prev_context, &current_thread->context);
     }
+	preempt_enable();
 }
 
 void uthread_exit(void) {
     /* TODO Phase 2 */
+	preempt_disable();
     current_thread->state = THREAD_EXITED;      // Set the current thread's state to exited
     uthread_yield();                            // Yield the CPU to another thread
+	preempt_enable();
 }
 
 int uthread_create(uthread_func_t func, void *arg) {
     /* TODO Phase 2 */
+	 preempt_disable();
     struct uthread_tcb *new_thread = malloc(sizeof(struct uthread_tcb));
     if (!new_thread) {
         return -1;
@@ -93,11 +99,15 @@ int uthread_create(uthread_func_t func, void *arg) {
         return -1;
     }
 
+	preempt_enable();
     return 0;
 }
 
 int uthread_run(bool preempt, uthread_func_t func, void *arg) {
     /* TODO Phase 2 */
+	if(preempt) {
+		preempt_start(preempt);
+	}
     ready_queue = queue_create();
     blocked_queue = queue_create();  // Initialize the blocked queue
     if (!ready_queue || !blocked_queue) {
@@ -116,19 +126,24 @@ int uthread_run(bool preempt, uthread_func_t func, void *arg) {
         }
     }
 
+	preempt_stop();
     return 0;
 }
 
 void uthread_block(void) {
     /* TODO Phase 3 */
+	preempt_disable();
     current_thread->state = THREAD_BLOCKED;
     queue_enqueue(blocked_queue, current_thread);
     uthread_yield();
+	preempt_enable(); 
 }
 
 void uthread_unblock(struct uthread_tcb *uthread) {
     /* TODO Phase 3 */
+	preempt_disable();
     uthread->state = THREAD_READY;
     queue_delete(blocked_queue, uthread);
     queue_enqueue(ready_queue, uthread);
+	preempt_enable();
 }
