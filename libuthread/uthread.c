@@ -40,8 +40,9 @@ struct uthread_tcb *uthread_current(void) {
 void uthread_yield(void) {
     /* TODO Phase 2 */
 	preempt_disable();
-	
-    if (current_thread->state == THREAD_READY) {
+
+    if (current_thread->state == THREAD_RUNNING) {
+        current_thread->state = THREAD_READY;  // Set the state back to ready before enqueue
         if (queue_enqueue(ready_queue, current_thread) == -1) {
             // Handle enqueue failure
             return;
