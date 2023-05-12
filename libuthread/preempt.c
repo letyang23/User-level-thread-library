@@ -31,7 +31,6 @@ void alarm_handler(int sig)
  */
 void preempt_disable(void)
 {
-	/* TODO Phase 4 */
 	sigset_t block_alarm;
 	sigemptyset(&block_alarm);
 	sigaddset(&block_alarm, SIGVTALRM);
@@ -43,7 +42,6 @@ void preempt_disable(void)
  */
 void preempt_enable(void)
 {
-	/* TODO Phase 4 */
 	sigset_t unblock_alarm;
 	sigemptyset(&unblock_alarm);
 	sigaddset(&unblock_alarm, SIGVTALRM);
@@ -55,7 +53,6 @@ void preempt_enable(void)
  */
 void preempt_start(bool preempt)
 {
-	/* TODO Phase 4 */
 	// Set up signal
     (void) preempt;
 	struct sigaction sa;
@@ -78,7 +75,6 @@ void preempt_start(bool preempt)
  */
 void preempt_stop(void)
 {
-	/* TODO Phase 4 */
 	setitimer(ITIMER_VIRTUAL, NULL, NULL);	//Stops timer
 	
 	// Resets the signal handler for SIGVTALRM to the default handler.

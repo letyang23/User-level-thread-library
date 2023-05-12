@@ -2,7 +2,13 @@
 programs := \
 	queue_tester.x \
 	uthread_hello.x \
-	uthread_yield.x
+	uthread_yield.x \
+	uthread_tester.x \
+	sem_simple.x \
+	sem_count.x \
+	sem_prime.x \
+	sem_buffer.x \
+	test_preempt.x
 
 # User-level thread library
 UTHREADLIB := libuthread
