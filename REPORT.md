@@ -50,6 +50,41 @@ function, it will check if the current node has been deleted, or it might cause
 segmentation fault during execution. Finally, the `queue_length()` function
 simply returns the current length of the queue, which is stores as int `size` in
 the `struct queue`.
+### Unit Testing
+In the phase of unit testing, we created a new file called `queue_tester.c` for
+a suite of unit tests to verify the correctness of our queue implementation. The
+unit tests are organized into individual functions that cover different aspects
+of the queue functionality.
+
+1. **test_create**: This test checks if the `queue_create()` function
+   successfully allocates an empty queue and returns a non-null pointer.
+2. **test_queue_simple**: This test checks basic enqueue and dequeue
+   functionality.
+3. **test_enqueue_length**: This test checks the functionality
+   of `queue_enqueue()` and `queue_length()`.
+4. **test_dequeue**: This test checks the functionality of `queue_dequeue()`. It
+   enqueues multiple items and then dequeues them, verifying the correct order
+   and updating the queue length.
+5. **test_dequeue_empty**: This test checks the behavior of `queue_dequeue()`
+   when applied to an empty queue.
+6. **test_delete**: This test checks the functionality of `queue_delete()`. It
+   enqueues multiple items, deletes them, and verifies that the queue length is
+   updated accordingly.
+7. **test_delete_null**: This test checks the behavior of `queue_delete()` when
+   asked to delete a NULL data.
+8. **test_iterator**: This test checks the functionality of `queue_iterate()`.
+   It enqueues multiple items and then iterates through the queue, applying a
+   callback function that increments the items and deletes a specific item (42)
+   from the queue. The test verifies that the item has been deleted and that the
+   remaining items have been incremented.
+9. **test_destroy_non_empty**: This test checks the behavior
+   of `queue_destroy()` when applied to a non-empty queue.
+10. **test_print_queue**: This test demonstrates how to use the
+    `queue_iterate()` function to print the contents of the queue.
+
+These tests were executed in the `main()` function of the test program to ensure
+that the queue implementation passed all tests before proceeding with the
+remainder of the project. 
 ## Phase 2: uthread API
 In this phase, we implemented the user-level thread (uthread) API. The
 implementation is managed entirely in user space, without requiring kernel-level
@@ -66,7 +101,7 @@ their state and CPU availability.
 
 Our implementation provides several key thread operations. The `uthread_yield`
 function allows a thread to voluntarily yield the CPU to another thread. If the
-currently running thread isn't finished, it's state is switched back to ready
+currently running thread isn't finished, it's state is switched back to ready,
 and it is placed back into the ready queue. The `uthread_exit` function allows a
 thread to indicate it has finished executing, updating its state to exited and
 yielding the CPU to another thread.
@@ -77,7 +112,8 @@ thread into the ready queue. Finally, the `uthread_run` function, as the main
 driver function, initiates the thread scheduler. It creates the ready queue,
 designates the idle thread as the current thread, and creates the initial
 thread. It then enters a loop, repeatedly yielding control to the next ready
-thread until all threads have completed.
+thread until all threads have completed. We conducted the test using the files 
+`uthread_hello.c` and `uthread_yield.c` that were provided by the professor.
 ## Phase 3: Semaphore
 In this phase, to manage synchronization among multiple threads in a
 multithreaded environment, we focus on the implementation of semaphores, a
@@ -134,10 +170,11 @@ complements `uthread_block(void)`. It's responsible for transitioning a thread
 from the `THREAD_BLOCKED` state back to the `THREAD_READY` state. It changes the
 state of the specified thread to `THREAD_READY`, removes it from
 the `blocked_queue`, and enqueues it to the `ready_queue`, thus making it
-available for scheduling.
+available for scheduling. We conducted tests using `sem_simple.c`, `sem_prime.c`
+ `sem_count.c`, and `sem_buffer.c` that were supplied by the professor.
 ## Phase 4: preemption
 We mainly implemented preemption for the library. It is a mechanism that allows
-the operation system to interrupt the execution of a running thread and switch
+the operating system to interrupt the execution of a running thread and switch
 to another thread and can helps to maintain fairness and improve the overall
 system responsiveness.
 

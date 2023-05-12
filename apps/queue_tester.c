@@ -132,6 +132,28 @@ void test_dequeue(void) {
     queue_destroy(q);
 }
 
+/* Test dequeue empty item */
+void test_dequeue_empty(void) {
+    queue_t q;
+    int data1 = 1;
+    int *dequeued_item;
+
+    fprintf(stderr, "*** TEST dequeue_empty ***\n");
+
+    // Create a new queue, enqueue and deque the item.
+    q = queue_create();
+    queue_enqueue(q, &data1);
+    queue_dequeue(q, (void **)&dequeued_item);
+
+    // Dequeue an empty queue to test the output
+    int result = queue_dequeue(q, (void **)&dequeued_item);
+    TEST_ASSERT(result == -1);
+    TEST_ASSERT(queue_length(q) == 0);
+
+    // Clean up by destroying the queue
+    queue_destroy(q);
+}
+
 /* Test deleting items from the queue */
 void test_delete(void) {
     queue_t q;
@@ -161,6 +183,28 @@ void test_delete(void) {
 
     // Attempt to delete a non-existent item and check the result
     result = queue_delete(q, &data1);
+    TEST_ASSERT(result == -1);
+
+    // Clean up by destroying the queue
+    queue_destroy(q);
+}
+
+/* Test deleting NULL items from the queue */
+void test_delete_null(void) {
+    queue_t q;
+    int data1 = 1, data2 = 2, data3 = 3;
+    int result;
+
+    fprintf(stderr, "*** TEST delete_null ***\n");
+
+    // Create a new queue, enqueue items, and check the initial length
+    q = queue_create();
+    queue_enqueue(q, &data1);
+    queue_enqueue(q, &data2);
+    queue_enqueue(q, &data3);
+
+    // Trying to delete a null data in queue
+    result = queue_delete(q, NULL);
     TEST_ASSERT(result == -1);
 
     // Clean up by destroying the queue
@@ -215,7 +259,9 @@ int main(void) {
     test_iterator();
     test_enqueue_length();
     test_dequeue();
+    test_dequeue_empty();
     test_delete();
+    test_delete_null();
     test_destroy_non_empty();
     test_print_queue();
 
