@@ -20,7 +20,6 @@ typedef enum {
 
 /* Thread Control BLock (TCB) Data Structure */
 struct uthread_tcb {
-    /* TODO Phase 2 */
     ucontext_t context;     // Thread Context
     thread_state_t state;   // Thread State
     void *stack;            // Pointer to the thread's stack

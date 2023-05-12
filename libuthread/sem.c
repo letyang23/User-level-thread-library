@@ -55,6 +55,11 @@ int sem_down(sem_t sem)
     while (sem->count == 0) {
         queue_enqueue(sem->queue, uthread_current());
         uthread_block();
+
+        // Recheck the semaphore count after unblocking for the corner case.
+        if (sem->count == 0) {
+            continue;
+        }
     }
 
     // Decrease the semaphore's count and return
