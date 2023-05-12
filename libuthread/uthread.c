@@ -7,8 +7,8 @@
 #include <sys/time.h>
 
 #include "private.h"
-#include "uthread.h"
 #include "queue.h"
+#include "uthread.h"
 
 /* Enum type for thread states */
 typedef enum {
@@ -33,14 +33,13 @@ struct uthread_tcb idle_thread;                     // Idle Thread
 static queue_t blocked_queue = NULL;                // Queue of threads that are blocked
 
 struct uthread_tcb *uthread_current(void) {
-    /* TODO Phase 2/3 */
-    return current_thread;
+    return current_thread;  // Get the current thread
 }
 
 void uthread_yield(void) {
-    /* TODO Phase 2 */
-	preempt_disable();
+	preempt_disable();  // Disable preemption
 
+    // If current thread is running, enqueue it back to the ready queue
     if (current_thread->state == THREAD_RUNNING) {
         current_thread->state = THREAD_READY;  // Set the state back to ready before enqueue
         if (queue_enqueue(ready_queue, current_thread) == -1) {
@@ -61,90 +60,94 @@ void uthread_yield(void) {
         current_thread = next_thread;
         uthread_ctx_switch(prev_context, &current_thread->context);
     }
-	preempt_enable();
+	preempt_enable();   // Enable preemption
 }
 
 void uthread_exit(void) {
-    /* TODO Phase 2 */
-	preempt_disable();
+	preempt_disable();                          // Disable preemption
     current_thread->state = THREAD_EXITED;      // Set the current thread's state to exited
     uthread_yield();                            // Yield the CPU to another thread
-	preempt_enable();
+	preempt_enable();                           // Enable preemption
 }
 
 int uthread_create(uthread_func_t func, void *arg) {
-    /* TODO Phase 2 */
-	 preempt_disable();
+	 preempt_disable();     // Disable preemption
+
+    // Allocate a new TCB and initialize it
     struct uthread_tcb *new_thread = malloc(sizeof(struct uthread_tcb));
     if (!new_thread) {
         return -1;
     }
 
+    // Allocate stack for the new thread
     new_thread->stack = uthread_ctx_alloc_stack();
     if (!new_thread->stack) {
         free(new_thread);
         return -1;
     }
 
+    // Initialize the new thread
     if (uthread_ctx_init(&new_thread->context, new_thread->stack, func, arg) == -1) {
         uthread_ctx_destroy_stack(new_thread->stack);
         free(new_thread);
         return -1;
     }
 
+    // Enqueue the new thread to the ready queue
     new_thread->state = THREAD_READY;
-
     if (queue_enqueue(ready_queue, new_thread) == -1) {
         uthread_ctx_destroy_stack(new_thread->stack);
         free(new_thread);
         return -1;
     }
 
-	preempt_enable();
+	preempt_enable();   // Enable preemption
     return 0;
 }
 
 int uthread_run(bool preempt, uthread_func_t func, void *arg) {
-    /* TODO Phase 2 */
 	if(preempt) {
-		preempt_start(preempt);
+		preempt_start(preempt);     // Start preemption if enabled
 	}
+
+    // Create the ready and blocked queues
     ready_queue = queue_create();
     blocked_queue = queue_create();  // Initialize the blocked queue
     if (!ready_queue || !blocked_queue) {
         return -1;
     }
 
+    // Set the idle thread as the current thread
     current_thread = &idle_thread;
 
+    // Create the initial thread
     if (uthread_create(func, arg) == -1) {
         return -1;
     }
 
+    // Run until all threads have finished
     while (queue_length(ready_queue) > 0 || queue_length(blocked_queue) > 0) {
         if (queue_length(ready_queue) > 0) {
-            uthread_yield();
+            uthread_yield();    // Yield control to the next thread
         }
     }
 
-	preempt_stop();
+	preempt_stop();     // Stop preemption
     return 0;
 }
 
 void uthread_block(void) {
-    /* TODO Phase 3 */
-	preempt_disable();
-    current_thread->state = THREAD_BLOCKED;
-    queue_enqueue(blocked_queue, current_thread);
-    uthread_yield();
-	preempt_enable(); 
+	preempt_disable();                                          // Disable preemption
+    current_thread->state = THREAD_BLOCKED;                     // Mark the current thread as blocked
+    queue_enqueue(blocked_queue, current_thread);   // Move the current thread to the blocked queue
+    uthread_yield();                                            // Yield control to the next thread
+	preempt_enable();                                           // Enable preemption
 }
 
 void uthread_unblock(struct uthread_tcb *uthread) {
-    /* TODO Phase 3 */
-	preempt_disable();
-    uthread->state = THREAD_READY;
-    queue_delete(blocked_queue, uthread);
-    queue_enqueue(ready_queue, uthread);
-	preempt_enable();
+	preempt_disable();                                          // Disable preemption
+    uthread->state = THREAD_READY;                              // Mark the thread as ready
+    queue_delete(blocked_queue, uthread);           // Remove the thread from the blocked queue
+    queue_enqueue(ready_queue, uthread);            // Move the thread to the ready queue
+	preempt_enable();                                          // Enable preemption
 }

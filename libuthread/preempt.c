@@ -22,6 +22,7 @@
  */
 void alarm_handler(int sig) 
 {
+    (void) sig;
 	uthread_yield();
 }
 
@@ -56,6 +57,7 @@ void preempt_start(bool preempt)
 {
 	/* TODO Phase 4 */
 	// Set up signal
+    (void) preempt;
 	struct sigaction sa;
 	sa.sa_handler = alarm_handler;
 	sigemptyset(&sa.sa_mask);
