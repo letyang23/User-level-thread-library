@@ -113,7 +113,8 @@ driver function, initiates the thread scheduler. It creates the ready queue,
 designates the idle thread as the current thread, and creates the initial
 thread. It then enters a loop, repeatedly yielding control to the next ready
 thread until all threads have completed. We conducted the test using the files 
-`uthread_hello.c` and `uthread_yield.c` that were provided by the professor.
+`uthread_hello.c` and `uthread_yield.c` that were provided by the professor, 
+and our own tester `uthread_tester.c`.
 ## Phase 3: Semaphore
 In this phase, to manage synchronization among multiple threads in a
 multithreaded environment, we focus on the implementation of semaphores, a
