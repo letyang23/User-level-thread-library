@@ -1,4 +1,4 @@
-# Report for Project 2(User-level thread library)
+# README for User-level thread library
 ## Summary
 This program, `User-level thread library`, mainly implements a basic user-level
 thread library for Linux. Our library provides a complete interface for
